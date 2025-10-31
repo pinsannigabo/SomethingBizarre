@@ -22,10 +22,9 @@
             height: 100vh;
         }
         
-        #toggle-btn {
+        #toggle-btn, #rotation-btn {
             position: fixed;
             top: 20px;
-            right: 20px;
             padding: 12px 24px;
             background: rgba(255, 255, 255, 0.9);
             border: none;
@@ -38,10 +37,23 @@
             transition: all 0.3s;
         }
         
-        #toggle-btn:hover {
+        #toggle-btn {
+            right: 20px;
+        }
+        
+        #rotation-btn {
+            right: 200px;
+        }
+        
+        #toggle-btn:hover, #rotation-btn:hover {
             background: #fff;
             transform: translateY(-2px);
             box-shadow: 0 6px 8px rgba(0, 0, 0, 0.4);
+        }
+        
+        #rotation-btn.active {
+            background: #4a90e2;
+            color: white;
         }
         
         #ui-panel {
@@ -248,6 +260,7 @@
 <body>
     <div id="canvas-container"></div>
     
+    <button id="rotation-btn" class="active">🔄 Auto-Rotate</button>
     <button id="toggle-btn">☰ Toggle Controls</button>
     
     <div id="ui-panel">
@@ -443,6 +456,7 @@
         var knotMesh = null;
         var tubeSize = 0.15;
         var knotColor = '#4a90e2';
+        var autoRotate = true;
         
         function createKnotGeometry(knotType, tubeRadius, segments, radialSegments) {
             segments = segments || 300;
@@ -542,6 +556,7 @@
         var isDragging = false;
         var previousMousePosition = { x: 0, y: 0 };
         
+        // Mouse events
         renderer.domElement.addEventListener('mousedown', function(e) {
             isDragging = true;
             previousMousePosition = { x: e.clientX, y: e.clientY };
@@ -563,6 +578,32 @@
             isDragging = false;
         });
         
+        // Touch events for mobile
+        renderer.domElement.addEventListener('touchstart', function(e) {
+            if (e.touches.length === 1) {
+                isDragging = true;
+                previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                e.preventDefault();
+            }
+        });
+        
+        renderer.domElement.addEventListener('touchmove', function(e) {
+            if (!isDragging || !knotMesh || e.touches.length !== 1) return;
+            
+            var deltaX = e.touches[0].clientX - previousMousePosition.x;
+            var deltaY = e.touches[0].clientY - previousMousePosition.y;
+            
+            knotMesh.rotation.y += deltaX * 0.01;
+            knotMesh.rotation.x += deltaY * 0.01;
+            
+            previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            e.preventDefault();
+        });
+        
+        renderer.domElement.addEventListener('touchend', function() {
+            isDragging = false;
+        });
+        
         renderer.domElement.addEventListener('wheel', function(e) {
             e.preventDefault();
             camera.position.z += e.deltaY * 0.01;
@@ -571,6 +612,16 @@
         
         document.getElementById('toggle-btn').addEventListener('click', function() {
             document.getElementById('ui-panel').classList.toggle('hidden');
+        });
+        
+        document.getElementById('rotation-btn').addEventListener('click', function() {
+            autoRotate = !autoRotate;
+            this.classList.toggle('active');
+            if (autoRotate) {
+                this.textContent = '🔄 Auto-Rotate';
+            } else {
+                this.textContent = '⏸ Paused';
+            }
         });
         
         document.getElementById('knot-select').addEventListener('change', function(e) {
@@ -601,7 +652,7 @@
         function animate() {
             requestAnimationFrame(animate);
             
-            if (knotMesh && !isDragging) {
+            if (knotMesh && !isDragging && autoRotate) {
                 knotMesh.rotation.y += 0.003;
             }
             
