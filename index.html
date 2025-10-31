@@ -14,7 +14,7 @@
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             overflow: hidden;
-            background: #000;
+            background: #fff;
         }
         
         #canvas-container {
@@ -55,7 +55,7 @@
             padding: 20px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
             overflow-y: auto;
-            transition: transform 0.3s, opacity 0.3s;
+            transition: transform 0.3s ease, opacity 0.3s ease;
             z-index: 999;
             backdrop-filter: blur(10px);
         }
@@ -154,9 +154,24 @@
         input[type="color"] {
             width: 60px;
             height: 40px;
-            border: none;
+            border: 2px solid rgba(255, 255, 255, 0.3);
             border-radius: 6px;
             cursor: pointer;
+            background: transparent;
+        }
+        
+        input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+        
+        input[type="color"]::-webkit-color-swatch {
+            border: none;
+            border-radius: 4px;
+        }
+        
+        input[type="color"]::-moz-color-swatch {
+            border: none;
+            border-radius: 4px;
         }
         
         input[type="text"] {
@@ -310,7 +325,7 @@
         var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setClearColor(0x000000, 1);
+        renderer.setClearColor(0xffffff, 1);
         container.appendChild(renderer.domElement);
         
         camera.position.z = 8;
@@ -494,7 +509,14 @@
             for (var i = 0; i <= segments; i++) {
                 var t = (i / segments) * Math.PI * 2;
                 var p = knot.path(t);
-                points.push(p);
+                
+                if (knotMesh) {
+                    var rotated = p.clone();
+                    rotated.applyEuler(knotMesh.rotation);
+                    points.push(rotated);
+                } else {
+                    points.push(p);
+                }
             }
             
             var scale = 25;
@@ -583,6 +605,7 @@
                 knotMesh.rotation.y += 0.003;
             }
             
+            draw2DProjection();
             renderer.render(scene, camera);
         }
         
