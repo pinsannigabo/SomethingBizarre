@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Knot Explorer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            background: #000;
+        }
+        
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #toggle-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            transition: all 0.3s;
+        }
+        
+        #toggle-btn:hover {
+            background: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.4);
+        }
+        
+        #ui-panel {
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            width: 320px;
+            max-height: calc(100vh - 100px);
+            background: rgba(30, 30, 30, 0.95);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            overflow-y: auto;
+            transition: transform 0.3s, opacity 0.3s;
+            z-index: 999;
+            backdrop-filter: blur(10px);
+        }
+        
+        #ui-panel.hidden {
+            transform: translateX(360px);
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        #ui-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        #ui-panel::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+        
+        #ui-panel::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+        
+        .section {
+            margin-bottom: 24px;
+        }
+        
+        .section-title {
+            color: #fff;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        label {
+            color: #ccc;
+            font-size: 13px;
+            display: block;
+            margin-bottom: 8px;
+        }
+        
+        select, input[type="range"] {
+            width: 100%;
+            margin-bottom: 16px;
+        }
+        
+        select {
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        
+        select option {
+            background: #1a1a1a;
+        }
+        
+        input[type="range"] {
+            -webkit-appearance: none;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            outline: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #4a90e2;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            background: #4a90e2;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+        
+        .color-input {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        input[type="color"] {
+            width: 60px;
+            height: 40px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        
+        input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 14px;
+            font-family: monospace;
+        }
+        
+        .value-display {
+            color: #4a90e2;
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        
+        .invariant-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 12px;
+        }
+        
+        .invariant-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .invariant-card.full {
+            grid-column: 1 / -1;
+        }
+        
+        .invariant-label {
+            color: #888;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        
+        .invariant-value {
+            color: #fff;
+            font-size: 18px;
+            font-weight: 700;
+        }
+        
+        .invariant-value.small {
+            font-size: 14px;
+            font-family: monospace;
+        }
+        
+        #projection-canvas {
+            width: 100%;
+            height: 200px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .info-text {
+            color: #666;
+            font-size: 12px;
+            margin-top: 12px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <button id="toggle-btn">☰ Toggle Controls</button>
+    
+    <div id="ui-panel">
+        <div class="section">
+            <div class="section-title">Knot Selection</div>
+            <label>Choose a knot:</label>
+            <select id="knot-select">
+                <option value="unknot">Unknot (0₁) - 0 crossings</option>
+                <option value="trefoil" selected>Trefoil Knot (3₁) - 3 crossings</option>
+                <option value="figureEight">Figure-Eight (4₁) - 4 crossings</option>
+                <option value="cinquefoil">Cinquefoil (5₁) - 5 crossings</option>
+                <option value="threeTwist">Three-Twist (5₂) - 5 crossings</option>
+                <option value="stevedore">Stevedore (6₁) - 6 crossings</option>
+                <option value="granny">Granny (3₁#3₁) - 6 crossings</option>
+            </select>
+        </div>
+        
+        <div class="section">
+            <div class="section-title">Appearance</div>
+            <label>Tube Size:</label>
+            <div class="value-display" id="tube-value">0.15</div>
+            <input type="range" id="tube-size" min="0.05" max="0.4" step="0.01" value="0.15">
+            
+            <label>Color:</label>
+            <div class="color-input">
+                <input type="color" id="color-picker" value="#4a90e2">
+                <input type="text" id="color-text" value="#4a90e2">
+            </div>
+        </div>
+        
+        <div class="section">
+            <div class="section-title">2D Projection</div>
+            <canvas id="projection-canvas" width="280" height="200"></canvas>
+            <div class="info-text">Top-down view</div>
+        </div>
+        
+        <div class="section">
+            <div class="section-title">Knot Invariants</div>
+            <div class="invariant-grid">
+                <div class="invariant-card">
+                    <div class="invariant-label">Crossings</div>
+                    <div class="invariant-value" id="inv-crossings">3</div>
+                </div>
+                <div class="invariant-card">
+                    <div class="invariant-label">Genus</div>
+                    <div class="invariant-value" id="inv-genus">1</div>
+                </div>
+                <div class="invariant-card">
+                    <div class="invariant-label">Unknotting #</div>
+                    <div class="invariant-value" id="inv-unknotting">1</div>
+                </div>
+                <div class="invariant-card">
+                    <div class="invariant-label">Bridge #</div>
+                    <div class="invariant-value" id="inv-bridge">2</div>
+                </div>
+                <div class="invariant-card full">
+                    <div class="invariant-label">Alexander Polynomial</div>
+                    <div class="invariant-value small" id="inv-alexander">t - 1 + t⁻¹</div>
+                </div>
+                <div class="invariant-card full">
+                    <div class="invariant-label">Jones Polynomial</div>
+                    <div class="invariant-value small" id="inv-jones">t + t³ - t⁴</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="info-text">Click and drag to rotate • Scroll to zoom</div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        var container = document.getElementById('canvas-container');
+        var scene = new THREE.Scene();
+        var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x000000, 1);
+        container.appendChild(renderer.domElement);
+        
+        camera.position.z = 8;
+        
+        var ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        
+        var directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight1.position.set(5, 5, 5);
+        scene.add(directionalLight1);
+        
+        var directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.4);
+        directionalLight2.position.set(-5, -5, -5);
+        scene.add(directionalLight2);
+        
+        var knots = {
+            unknot: {
+                name: 'Unknot',
+                path: function(t) {
+                    return new THREE.Vector3(
+                        Math.cos(t) * 2,
+                        Math.sin(t) * 2,
+                        0
+                    );
+                },
+                crossings: 0, genus: 0, unknotting: 0, bridge: 1,
+                alexander: '1', jones: '1'
+            },
+            trefoil: {
+                name: 'Trefoil Knot',
+                path: function(t) {
+                    return new THREE.Vector3(
+                        Math.sin(t) + 2 * Math.sin(2 * t),
+                        Math.cos(t) - 2 * Math.cos(2 * t),
+                        -Math.sin(3 * t)
+                    );
+                },
+                crossings: 3, genus: 1, unknotting: 1, bridge: 2,
+                alexander: 't - 1 + t⁻¹', jones: 't + t³ - t⁴'
+            },
+            figureEight: {
+                name: 'Figure-Eight Knot',
+                path: function(t) {
+                    return new THREE.Vector3(
+                        (2 + Math.cos(2 * t)) * Math.cos(3 * t),
+                        (2 + Math.cos(2 * t)) * Math.sin(3 * t),
+                        Math.sin(4 * t)
+                    );
+                },
+                crossings: 4, genus: 1, unknotting: 1, bridge: 2,
+                alexander: '-t² + 3t - 1 + 3t⁻¹ - t⁻²', jones: 't² - t + 1 - t⁻¹ + t⁻²'
+            },
+            cinquefoil: {
+                name: 'Cinquefoil Knot',
+                path: function(t) {
+                    return new THREE.Vector3(
+                        Math.sin(t) + 2 * Math.sin(2 * t),
+                        Math.cos(t) - 2 * Math.cos(2 * t),
+                        -Math.sin(5 * t) * 1.5
+                    );
+                },
+                crossings: 5, genus: 2, unknotting: 2, bridge: 2,
+                alexander: 't² - t + 1 - t⁻¹ + t⁻²', jones: 't² + t⁴ - t⁵ + t⁶ - t⁷'
+            },
+            threeTwist: {
+                name: 'Three-Twist Knot',
+                path: function(t) {
+                    return new THREE.Vector3(
+                        (2 + Math.cos(3 * t)) * Math.cos(2 * t),
+                        (2 + Math.cos(3 * t)) * Math.sin(2 * t),
+                        Math.sin(5 * t) * 1.2
+                    );
+                },
+                crossings: 5, genus: 2, unknotting: 1, bridge: 2,
+                alexander: '2t - 3 + 2t⁻¹', jones: 't⁻¹ + t⁻³ - t⁻⁴'
+            },
+            stevedore: {
+                name: 'Stevedore Knot',
+                path: function(t) {
+                    return new THREE.Vector3(
+                        (2.5 + Math.cos(3 * t)) * Math.cos(2 * t),
+                        (2.5 + Math.cos(3 * t)) * Math.sin(2 * t),
+                        Math.sin(3 * t) * 2
+                    );
+                },
+                crossings: 6, genus: 2, unknotting: 1, bridge: 3,
+                alexander: '2t² - 3t + 2 - 3t⁻¹ + 2t⁻²', jones: 't⁻² - t⁻¹ + 2 - 2t + 2t² - t³'
+            },
+            granny: {
+                name: 'Granny Knot',
+                path: function(t) {
+                    var s = (t % (Math.PI * 2)) / (Math.PI * 2);
+                    if (s < 0.5) {
+                        var t1 = s * 4 * Math.PI;
+                        return new THREE.Vector3(
+                            Math.sin(t1) + 2 * Math.sin(2 * t1) - 2.5,
+                            Math.cos(t1) - 2 * Math.cos(2 * t1),
+                            -Math.sin(3 * t1) * 0.8
+                        );
+                    } else {
+                        var t2 = (s - 0.5) * 4 * Math.PI;
+                        return new THREE.Vector3(
+                            Math.sin(t2) + 2 * Math.sin(2 * t2) + 2.5,
+                            Math.cos(t2) - 2 * Math.cos(2 * t2),
+                            -Math.sin(3 * t2) * 0.8
+                        );
+                    }
+                },
+                crossings: 6, genus: 2, unknotting: 2, bridge: 3,
+                alexander: '(t - 1 + t⁻¹)²', jones: '(t + t³ - t⁴)²'
+            }
+        };
+        
+        var currentKnot = 'trefoil';
+        var knotMesh = null;
+        var tubeSize = 0.15;
+        var knotColor = '#4a90e2';
+        
+        function createKnotGeometry(knotType, tubeRadius, segments, radialSegments) {
+            segments = segments || 300;
+            radialSegments = radialSegments || 20;
+            
+            var knot = knots[knotType];
+            var points = [];
+            
+            for (var i = 0; i <= segments; i++) {
+                var t = (i / segments) * Math.PI * 2;
+                points.push(knot.path(t));
+            }
+            
+            var curve = new THREE.CatmullRomCurve3(points, true);
+            var geometry = new THREE.TubeGeometry(curve, segments, tubeRadius, radialSegments, true);
+            
+            return geometry;
+        }
+        
+        function updateKnot() {
+            if (knotMesh) {
+                scene.remove(knotMesh);
+                knotMesh.geometry.dispose();
+                knotMesh.material.dispose();
+            }
+            
+            var geometry = createKnotGeometry(currentKnot, tubeSize);
+            var material = new THREE.MeshPhongMaterial({ 
+                color: knotColor,
+                shininess: 100,
+                specular: 0x444444
+            });
+            
+            knotMesh = new THREE.Mesh(geometry, material);
+            scene.add(knotMesh);
+            
+            updateInvariants();
+            draw2DProjection();
+        }
+        
+        function updateInvariants() {
+            var knot = knots[currentKnot];
+            document.getElementById('inv-crossings').textContent = knot.crossings;
+            document.getElementById('inv-genus').textContent = knot.genus;
+            document.getElementById('inv-unknotting').textContent = knot.unknotting;
+            document.getElementById('inv-bridge').textContent = knot.bridge;
+            document.getElementById('inv-alexander').textContent = knot.alexander;
+            document.getElementById('inv-jones').textContent = knot.jones;
+        }
+        
+        function draw2DProjection() {
+            var canvas = document.getElementById('projection-canvas');
+            var ctx = canvas.getContext('2d');
+            var w = canvas.width;
+            var h = canvas.height;
+            
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
+            ctx.fillRect(0, 0, w, h);
+            
+            var knot = knots[currentKnot];
+            var segments = 200;
+            var points = [];
+            
+            for (var i = 0; i <= segments; i++) {
+                var t = (i / segments) * Math.PI * 2;
+                var p = knot.path(t);
+                points.push(p);
+            }
+            
+            var scale = 25;
+            ctx.strokeStyle = knotColor;
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            ctx.beginPath();
+            for (var i = 0; i < points.length; i++) {
+                var p = points[i];
+                var x = w / 2 + p.x * scale;
+                var y = h / 2 + p.y * scale;
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.stroke();
+        }
+        
+        var isDragging = false;
+        var previousMousePosition = { x: 0, y: 0 };
+        
+        renderer.domElement.addEventListener('mousedown', function(e) {
+            isDragging = true;
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+        });
+        
+        renderer.domElement.addEventListener('mousemove', function(e) {
+            if (!isDragging || !knotMesh) return;
+            
+            var deltaX = e.clientX - previousMousePosition.x;
+            var deltaY = e.clientY - previousMousePosition.y;
+            
+            knotMesh.rotation.y += deltaX * 0.01;
+            knotMesh.rotation.x += deltaY * 0.01;
+            
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+        });
+        
+        renderer.domElement.addEventListener('mouseup', function() {
+            isDragging = false;
+        });
+        
+        renderer.domElement.addEventListener('wheel', function(e) {
+            e.preventDefault();
+            camera.position.z += e.deltaY * 0.01;
+            camera.position.z = Math.max(3, Math.min(15, camera.position.z));
+        });
+        
+        document.getElementById('toggle-btn').addEventListener('click', function() {
+            document.getElementById('ui-panel').classList.toggle('hidden');
+        });
+        
+        document.getElementById('knot-select').addEventListener('change', function(e) {
+            currentKnot = e.target.value;
+            updateKnot();
+        });
+        
+        document.getElementById('tube-size').addEventListener('input', function(e) {
+            tubeSize = parseFloat(e.target.value);
+            document.getElementById('tube-value').textContent = tubeSize.toFixed(2);
+            updateKnot();
+        });
+        
+        document.getElementById('color-picker').addEventListener('input', function(e) {
+            knotColor = e.target.value;
+            document.getElementById('color-text').value = knotColor;
+            updateKnot();
+        });
+        
+        document.getElementById('color-text').addEventListener('input', function(e) {
+            if (/^#[0-9A-F]{6}$/i.test(e.target.value)) {
+                knotColor = e.target.value;
+                document.getElementById('color-picker').value = knotColor;
+                updateKnot();
+            }
+        });
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (knotMesh && !isDragging) {
+                knotMesh.rotation.y += 0.003;
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        window.addEventListener('resize', function() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        updateKnot();
+        animate();
+    </script>
+</body>
+</html>
