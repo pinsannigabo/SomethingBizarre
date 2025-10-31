@@ -255,9 +255,119 @@
             margin-top: 12px;
             text-align: center;
         }
+        
+        #intro-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            backdrop-filter: blur(5px);
+        }
+        
+        #intro-modal.hidden {
+            display: none;
+        }
+        
+        .modal-content {
+            background: linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%);
+            padding: 40px;
+            border-radius: 16px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .modal-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .modal-content::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+        
+        .modal-content::-webkit-scrollbar-thumb {
+            background: rgba(74, 144, 226, 0.5);
+            border-radius: 4px;
+        }
+        
+        .modal-title {
+            color: #fff;
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .modal-text {
+            color: #ccc;
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+        
+        .modal-btn {
+            padding: 14px 32px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .modal-btn.primary {
+            background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+            color: white;
+        }
+        
+        .modal-btn.primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(74, 144, 226, 0.4);
+        }
+        
+        .modal-btn.secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .modal-btn.secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
     </style>
 </head>
 <body>
+    <div id="intro-modal">
+        <div class="modal-content">
+            <div class="modal-title">Welcome to 3D Knot Explorer</div>
+            <div class="modal-text">
+                The purpose of this website is to aid researchers with the visualization of knots. Different features like the models themselves were gathered from various sources such as Three.js and CatmullRomCurve3. If you would like to know more about our topic, click continue. If knot (pun intended), click skip. Enjoy!
+            </div>
+            <div class="modal-buttons">
+                <button class="modal-btn primary" id="continue-btn">Continue</button>
+                <button class="modal-btn secondary" id="skip-btn">Skip</button>
+            </div>
+        </div>
+    </div>
+    
     <div id="canvas-container"></div>
     
     <button id="rotation-btn" class="active">🔄 Auto-Rotate</button>
@@ -332,6 +442,35 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
+        // Modal functionality
+        var introModal = document.getElementById('intro-modal');
+        var continueBtn = document.getElementById('continue-btn');
+        var skipBtn = document.getElementById('skip-btn');
+        
+        function showDetailedInfo() {
+            var modalContent = document.querySelector('.modal-content');
+            modalContent.innerHTML = `
+                <div class="modal-title">Analysis of Knot Invariants with Derived Relations Between Jones and Alexander Polynomials</div>
+                <div class="modal-text">
+                    We conducted this study to explore more about knots. While the general term "knots" makes you think about yarn and ropes, mathematics deals with them differently. Knot theory is the study of knots and links, and their properties. The different polynomials you'll see are a way to classify them based on their crossings—the number of times they overlap.
+                </div>
+                <div class="modal-buttons">
+                    <button class="modal-btn primary" id="close-modal-btn">Let's Explore!</button>
+                </div>
+            `;
+            
+            document.getElementById('close-modal-btn').addEventListener('click', function() {
+                introModal.classList.add('hidden');
+            });
+        }
+        
+        continueBtn.addEventListener('click', showDetailedInfo);
+        
+        skipBtn.addEventListener('click', function() {
+            introModal.classList.add('hidden');
+        });
+        
+        // Three.js setup
         var container = document.getElementById('canvas-container');
         var scene = new THREE.Scene();
         var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -618,9 +757,9 @@
             autoRotate = !autoRotate;
             this.classList.toggle('active');
             if (autoRotate) {
-                this.textContent = 'Auto-Rotate';
+                this.textContent = '🔄 Auto-Rotate';
             } else {
-                this.textContent = 'Paused';
+                this.textContent = '⏸ Paused';
             }
         });
         
